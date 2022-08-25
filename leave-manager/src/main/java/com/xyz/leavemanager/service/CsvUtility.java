@@ -18,7 +18,6 @@ import com.xyz.leavemanager.model.LeaveApply;
 
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class CsvUtility{
@@ -30,7 +29,7 @@ public class CsvUtility{
     private String appliedPath;
 
     public List<LeaveApply> loadAppliedLeaveFile(){
-        File file = new File(path);
+        File file = new File(appliedPath);
         List<LeaveApply> appliedLeaves = new ArrayList<>();
 
         try (InputStream in = new FileInputStream(appliedPath)){
@@ -38,7 +37,8 @@ public class CsvUtility{
             csvMapper.enable(CsvParser.Feature.IGNORE_TRAILING_UNMAPPABLE);
             csvMapper.enable(CsvParser.Feature.EMPTY_STRING_AS_NULL);
             CsvSchema schema = csvMapper.typedSchemaFor(LeaveApply.class)
-                    .withHeader()
+                    .withoutHeader()
+                    .withSkipFirstDataRow(true)
                     .withStrictHeaders(false)
                     .withColumnReordering(true);
             MappingIterator<LeaveApply> mappingIterator = csvMapper.reader()
@@ -46,7 +46,7 @@ public class CsvUtility{
                     .with(schema)
                     .readValues(in);
 
-            mappingIterator.forEachRemaining((t -> {appliedLeaves.add(t);}));
+            mappingIterator.forEachRemaining(t -> {appliedLeaves.add(t);});
 //            appliedLeaves.stream().forEach(e -> System.out.println(e.getEmpId() + ", "+ e.getAppliedLeaves()));
         } catch (IOException e) {
             System.out.println("There is some error in file:");
@@ -77,5 +77,42 @@ public class CsvUtility{
             e.printStackTrace();
         }
         return balances;
+    }
+
+    public void updateAppliedLeaveFile(List<LeaveApply> appliedLeaves){
+        File file = new File(appliedPath);
+        try (InputStream in = new FileInputStream(file)){
+            CsvMapper csvMapper = new CsvMapper();
+            csvMapper.enable(CsvParser.Feature.IGNORE_TRAILING_UNMAPPABLE);
+            csvMapper.enable(CsvParser.Feature.SKIP_EMPTY_LINES);
+            csvMapper.enable(CsvParser.Feature.TRIM_SPACES);
+            CsvSchema schema = csvMapper.typedSchemaFor(LeaveApply.class)
+                    .withHeader()
+                    .withStrictHeaders(false)
+                    .withColumnReordering(true);
+            ObjectWriter writer = csvMapper.writerFor(LeaveApply.class).with(schema);
+            writer.writeValues(file).writeAll(appliedLeaves);
+        } catch (IOException e) {
+            System.out.println("There is some error in file:");
+            e.printStackTrace();
+        }
+    }
+
+    public void updateLeaveBalanceFile(List<LeaveBalance> balances){
+        File file = new File(path);
+        try (InputStream in = new FileInputStream(file)){
+            CsvMapper csvMapper = new CsvMapper();
+            csvMapper.enable(CsvParser.Feature.IGNORE_TRAILING_UNMAPPABLE);
+            csvMapper.enable(CsvParser.Feature.EMPTY_STRING_AS_NULL);
+            CsvSchema schema = csvMapper.typedSchemaFor(LeaveBalance.class)
+                    .withHeader()
+                    .withStrictHeaders(false)
+                    .withColumnReordering(true);
+            ObjectWriter writer = csvMapper.writerFor(LeaveBalance.class).with(schema);
+            writer.writeValues(file).writeAll(balances);
+        } catch (IOException e) {
+            System.out.println("There is some error in file:");
+            e.printStackTrace();
+        }
     }
 }
